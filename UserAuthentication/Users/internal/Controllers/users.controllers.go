@@ -61,16 +61,9 @@ func CreateUser(c *gin.Context) {
 
 	User.Password,_ = Utilities.HashPassword(User.Password)
 
-
-
-
-
-
-
-
-
-
 	result := Database.DB.Create(&User)
+
+
 	if result.Error != nil {
 		c.JSON(500, gin.H{
 			"description":"Error creating in the database",
@@ -84,7 +77,6 @@ func CreateUser(c *gin.Context) {
 		"Status": "OK",
 		"user": User.IdUser,
 		"Created": User.CreatedAt,
-		"HashedPassword": User.Password,
 	})
 
 
@@ -111,8 +103,54 @@ func GetSingleUser(c *gin.Context) {
     })	
 }
 
-func UpdateUser() {
+func UpdateUser(c *gin.Context) {
 
+	id := c.Param("id")
+
+	exists := Database.DB.Where("id = ?", id).First(&Models.User{})
+
+	if exists.RowsAffected == 0 {
+		c.JSON(500, gin.H{
+			"description":"User does not exist",
+			"error": "User not found",
+		})
+		return
+	}
+
+
+	var User Models.User
+
+	if err:= c.ShouldBindJSON(&User); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		return
+	}
+
+	emailValidation := Database.DB.Where("email = ?", User.Email).First(&User)
+
+	if emailValidation.RowsAffected > 0 {
+		c.JSON(500, gin.H{
+			"error": "Email already exists",
+		})
+		return
+	}
+
+	User.Password,_ = Utilities.HashPassword(User.Password)
+
+	result := Database.DB.Model(&Models.User{}).Where("id = ?", id).Omit("IdUser","ProfileID").Updates(&User)
+
+	if result.Error != nil {
+		c.JSON(500, gin.H{
+			"description":"Error updating in the database",
+			"error": result.Error.Error(),
+		})
+		return
+	}
+
+
+	c.JSON(200, gin.H{
+		"Status": "OK",
+		"Updated": User.UpdatedAt,
+	})
 }
 
 func DeleteUser(c *gin.Context) {
@@ -123,6 +161,7 @@ func DeleteUser(c *gin.Context) {
 
 	if exists.RowsAffected == 0 {
 		c.JSON(500, gin.H{
+			"description":"User does not exist",
 			"error": "User not found",
 		})
 		return
@@ -134,6 +173,7 @@ func DeleteUser(c *gin.Context) {
 
 	if result.Error != nil {
 		c.JSON(500, gin.H{
+			"description":"Error deleting in the database",
 			"error": result.Error.Error(),
 		})
 		return

@@ -16,12 +16,7 @@ func UserRoutes(router *gin.Engine) {
 	api.DELETE("/:id", controllers.DeleteUser)
 
 	api.GET("/:id", controllers.GetSingleUser)
-	/*
-
-
-		api.PATCH("/:id", updateUser)
-
-
-	*/
+	
+	api.PATCH("/:id", controllers.UpdateUser)
 
 }

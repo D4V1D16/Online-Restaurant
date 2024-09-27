@@ -37,6 +37,8 @@ func main() {
 	router := gin.Default()
 
 	API.UserRoutes(router)
+	API.ProfileRoutes(router)
+	API.JWTRoutes(router)
 
 	//Test Route
 	router.GET("/ping", func(c *gin.Context) {
