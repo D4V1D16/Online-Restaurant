@@ -12,4 +12,5 @@ func JWTRoutes(router *gin.Engine) {
 	api := router.Group("/jwt")
 
 	api.POST("/login",controllers.Login)
+	api.GET("/protected",controllers.ProtectedRoute)
 }

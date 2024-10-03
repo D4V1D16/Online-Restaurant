@@ -44,7 +44,7 @@ func CreateProfile(c *gin.Context) {
 
 	c.JSON(200, gin.H{
 		"Status": "OK",
-		"user": Profile.IdProfile,
+		"Id Profile": Profile.IdProfile,
 		"Created": Profile.CreatedAt,
 	})
 
@@ -66,6 +66,7 @@ func GetSingleProfile(c *gin.Context) {
     }
 
     c.JSON(200, gin.H{
+		
         "user": profile,
     })	
 }
