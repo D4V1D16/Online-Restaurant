@@ -68,55 +68,68 @@ func Login(c *gin.Context){
 }
 
 //This function will verify that the token is valid
-func ProtectedRoute(c *gin.Context){
+func ProtectedRoute(c *gin.Context) {
 	tokenString := c.GetHeader("Authorization")
 
 	if tokenString == "" {
-        c.JSON(401, gin.H{"error": "Missing or invalid token"})
-        c.Abort()
-        return
-    }
-
-
+		c.JSON(401, gin.H{"error": "Missing or invalid token"})
+		c.Abort()
+		return
+	}
 
 	err := Utilities.VerifyToken(tokenString)
 
-	if err != nil{
+	if err != nil {
 		c.JSON(401, gin.H{
-			"error":"Invalid JWT Token",
-			"details":err.Error(),
+			"error":   "Invalid JWT Token",
+			"details": err.Error(),
 		})
 		c.Abort()
 		return
 	}
 
-
 	// This part will extract the expire date of the token
-	expClaim, ok := Utilities.ExtractClaim(tokenString, "exp")
+	expClaim, err := Utilities.ExtractClaim(tokenString, "exp")
 
-	if ok != nil {
+	if err != nil {
 		c.JSON(500, gin.H{
 			"error": "Error extracting claim",
 		})
 		return
 	}
-	
-	expFloat:= expClaim.(float64)
 
+	// Convert expClaim to float64 first, then to int64
+	expFloat, ok := expClaim.(float64)
+	if !ok {
+		c.JSON(500, gin.H{
+			"error": "Invalid claim type",
+		})
+		return
+	}
 	expTime := int64(expFloat)
-	
+
 	expired := Utilities.TokenExpired(expTime)
 
 	if expired {
 		c.JSON(401, gin.H{
-			"error":"Invalid JWT Token",
-			"details":"Token expired",
+			"error":   "Invalid JWT Token",
+			"details": "Token expired",
 		})
+		return
 	}
 
 	// If everything is ok we will pass the route
 	c.JSON(200, gin.H{
-        "message": "This is a protected route",
-		"details":"This token is valid",
-    })
+		"message": "This is a protected route",
+		"details": "This token is valid",
+	})
 }
+//This function will revoke the tokens
+/*
+func Logout(c *gin.Context) {
+	tokenString := c.GetHeader("Authorization")
+
+
+
+}
+*/

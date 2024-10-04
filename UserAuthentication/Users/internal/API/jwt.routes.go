@@ -13,4 +13,5 @@ func JWTRoutes(router *gin.Engine) {
 
 	api.POST("/login",controllers.Login)
 	api.GET("/protected",controllers.ProtectedRoute)
+	//api.POST("/logout",controllers.Logout)
 }
