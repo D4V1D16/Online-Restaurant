@@ -3,46 +3,51 @@ package Utilities
 import (
 	"errors"
 	"fmt"
-	"os"
 	"log"
+	"os"
 	"time"
 	"userAuth/Users/internal/Database/Models"
+	"userAuth/Users/internal/Database"
 
 	"github.com/golang-jwt/jwt/v5"
 )
 
+// TTL Constant
+const tokenTTL = 900 * time.Second
 
-// Working
-func GenerateToken(User Models.User) (string, error) {
-	fmt.Println(User)
+// Generate a JWT token
+func GenerateToken(User Models.User, typeToken string) (string, error) {
 	key := []byte(os.Getenv("SECRET_KEY"))
 	if len(key) == 0 {
-		return "",errors.New("error loading the key")
-		}
-
+		return "", errors.New("error loading the key")
+	}
+	
 	t := jwt.New(jwt.SigningMethodHS256)
-
+	
 	claims := t.Claims.(jwt.MapClaims)
-
 	claims["email"] = User.Email
 	claims["id"] = User.IdUser
-	//ttl means time to live, and is the time that the token is valid
-	ttl := 900 * time.Second
-	claims["exp"] = time.Now().Add(ttl).Unix()
-
-	s, err := t.SignedString(key)
-
+	
+	if typeToken == "access" {
+		claims["exp"] = time.Now().Add(tokenTTL).Unix() 
+		claims["token_type"] = "access"
+	} else if typeToken == "refresh" {
+		claims["exp"] = time.Now().Add(24 * time.Hour).Unix() 
+		claims["token_type"] = "refresh"
+	} else {
+		return "", errors.New("invalid token type")
+	}
+	
+	signedToken, err := t.SignedString(key)
 	if err != nil {
 		return "", err
-		}
-
-	return s,nil
+	}
+	
+	return signedToken, nil
 }
 
-
-// Working
-func VerifyToken(token string) (string error){
-
+// Verify a JWT Token
+func VerifyToken(token string, expectedType string) error {
 	key := []byte(os.Getenv("SECRET_KEY"))
 
 	if len(key) == 0 {
@@ -60,42 +65,44 @@ func VerifyToken(token string) (string error){
 		return err
 	}
 
-	if !t.Valid{
+	if !t.Valid {
 		return errors.New("token is not valid")
+	}
+
+	claims := t.Claims.(jwt.MapClaims)
+	if tokenType, ok := claims["token_type"]; ok {
+		if tokenType != expectedType {
+			return fmt.Errorf("invalid token type: expected %s, got %s", expectedType, tokenType)
+		}
+	} else {
+		return errors.New("token_type claim not found in the token")
 	}
 
 	return nil
 }
 
-//Extract claim 
+// Extract a specific claim from the token
 func ExtractClaim(tokenStr string, claimKey string) (interface{}, error) {
-	// Secret key from environment variable
 	key := []byte(os.Getenv("SECRET_KEY"))
 
-	//Key didn't load or exist so return nil and false
 	if len(key) == 0 {
 		log.Println("Secret key is not set")
 		return nil, errors.New("invalid secret key, try to look for it in the environment variable")
 	}
 
-	// JET Parsing, trying to centralize this function
 	t, err := jwt.Parse(tokenStr, func(t *jwt.Token) (interface{}, error) {
-		// Verify that the signing method used matches the expected method
 		if _, ok := t.Method.(*jwt.SigningMethodHMAC); !ok {
 			return nil, fmt.Errorf("unexpected signing method: %v", t.Header["alg"])
 		}
 		return key, nil
 	})
 
-	// Error parsing
 	if err != nil {
 		log.Printf("Error parsing token: %v", err)
 		return nil, errors.New("error parsing token")
 	}
 
-	// Extract the claims
 	if claims, ok := t.Claims.(jwt.MapClaims); ok && t.Valid {
-		// Verify if a specific claim exists
 		if val, ok := claims[claimKey]; ok {
 			return val, nil
 		} else {
@@ -104,14 +111,46 @@ func ExtractClaim(tokenStr string, claimKey string) (interface{}, error) {
 		}
 	}
 
-	// Not JWT Valid
 	log.Printf("Invalid JWT Token")
 	return nil, errors.New("invalid JWT Token")
 }
 
+// Verify if the token has expired
+func TokenExpired(expTime int64) bool {
+	return time.Now().After(time.Unix(expTime, 0))
+}
 
-func TokenExpired(expTime int64) bool{
-	currentTime := time.Now().Unix()
+func VerifyRefreshToken(refreshToken string) (string, error) {
+	err := VerifyToken(refreshToken, "refresh")
+	if err != nil {
+		return "", fmt.Errorf("error: %v", err)
+	}
+	
+	emailClaim, err := ExtractClaim(refreshToken, "email")
+	if err != nil {
+		return "", fmt.Errorf("error extracting claim: %v", err)
+	}
+	
+	username, ok := emailClaim.(string)
+	if !ok {
+		return "", fmt.Errorf("invalid username claim type")
+	}
 
-	return currentTime > expTime
+	accessToken, err := GenerateToken(Models.User{Email: username}, "access")
+	if err != nil {
+		return "", fmt.Errorf("error generating access token: %v", err)
+	}
+
+	return accessToken, nil
+}
+
+
+func ValidateUserExistence(userID string) error {
+
+		var user Models.User
+		if err := Database.DB.First(&user, "id_user = ?", userID).Error; err != nil {
+			return errors.New("user not found")
+		}
+		return nil
+	
 }

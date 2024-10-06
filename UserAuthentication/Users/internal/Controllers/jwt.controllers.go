@@ -47,7 +47,18 @@ func Login(c *gin.Context){
 	}
 
 	// Generate JWT
-	jwt,err:=Utilities.GenerateToken(user)
+	jwt,err:=Utilities.GenerateToken(user,"access")
+
+	//Generate Refresh Token
+	refreshToken,erro := Utilities.GenerateToken(user,"refresh")
+
+	if erro != nil {
+		c.JSON(500, gin.H{
+			"message":"Error generating the refresh token",
+			"error": erro.Error(),
+		})
+		return
+	}
 
 	if err != nil {
 		c.JSON(500, gin.H{
@@ -60,9 +71,8 @@ func Login(c *gin.Context){
 
 	c.JSON(200, gin.H{
 		"email": user.Email,
-		"passwordFromDB": user.Password,
-		"HashedPasswordFromRequest": requestBody.Password,
 		"jwt": jwt,
+		"refreshToken": refreshToken,
 	})
 
 }
@@ -77,7 +87,7 @@ func ProtectedRoute(c *gin.Context) {
 		return
 	}
 
-	err := Utilities.VerifyToken(tokenString)
+	err := Utilities.VerifyToken(tokenString,"access")
 
 	if err != nil {
 		c.JSON(401, gin.H{
@@ -124,12 +134,32 @@ func ProtectedRoute(c *gin.Context) {
 		"details": "This token is valid",
 	})
 }
-//This function will revoke the tokens
-/*
-func Logout(c *gin.Context) {
-	tokenString := c.GetHeader("Authorization")
 
 
+func Refresh(c *gin.Context) {
+	
+	tokenString := c.GetHeader("Refresh-Token")
 
+	
+	if tokenString == "" {
+		c.JSON(401, gin.H{"error": "Missing refresh token"})
+		c.Abort()
+		return
+	}
+
+	newAccessToken, err := Utilities.VerifyRefreshToken(tokenString)
+	if err != nil {
+		c.JSON(401, gin.H{
+			"error": "Invalid refresh token",
+			"details": err.Error(),
+		})
+		c.Abort()
+		return
+	}
+
+	
+	c.JSON(200, gin.H{
+		"newAccessToken": newAccessToken,
+	})
 }
-*/
+
