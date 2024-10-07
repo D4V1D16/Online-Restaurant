@@ -20,6 +20,7 @@ func init() {
 	if err != nil {
 		log.Fatal("Error loading de enviroment files in the main file" + err.Error())
 	} else {
+
 		Database.DatabaseConn()
 		if err != nil {
 			log.Fatal("Error connecting to the database" + err.Error())

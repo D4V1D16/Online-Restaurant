@@ -43,3 +43,8 @@ type Permission struct {
     ID   uint
     Name string
 }
+
+type Token struct {
+	gorm.Model
+	Token string `gorm:"unique;not null"`
+}

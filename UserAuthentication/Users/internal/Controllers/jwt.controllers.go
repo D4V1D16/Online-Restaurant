@@ -1,6 +1,7 @@
 package controllers
 
 import (
+
 	"log"
 	"net/http"
 	"userAuth/Users/internal/Database"
@@ -87,12 +88,23 @@ func ProtectedRoute(c *gin.Context) {
 		return
 	}
 
+	
 	err := Utilities.VerifyToken(tokenString,"access")
 
 	if err != nil {
 		c.JSON(401, gin.H{
 			"error":   "Invalid JWT Token",
 			"details": err.Error(),
+		})
+		c.Abort()
+		return
+	}
+
+	tokenInvalidated := Utilities.IsInvalidated(tokenString)
+
+	if tokenInvalidated {
+		c.JSON(401, gin.H{
+			"error": "The token is invalidated",
 		})
 		c.Abort()
 		return
@@ -163,3 +175,41 @@ func Refresh(c *gin.Context) {
 	})
 }
 
+
+
+func Logout(c *gin.Context) {
+	tokenHeader := c.GetHeader("Token")
+
+
+		
+	if tokenHeader == "" {
+		c.JSON(401, gin.H{"error": "Missing or invalid token"})
+		c.Abort()
+		return
+	}
+
+
+	var token Models.Token
+
+
+
+	token.Token = tokenHeader
+
+
+	result := Database.DB.Create(&token)
+
+	if result.Error != nil {
+		c.JSON(500, gin.H{
+			"description":"Error deleting token",
+			"error": result.Error.Error(),
+		})
+		return
+	}
+
+
+	c.JSON(200, gin.H{
+		"message": "The token is now invalidated",
+
+	})
+
+}

@@ -154,3 +154,13 @@ func ValidateUserExistence(userID string) error {
 		return nil
 	
 }
+
+
+func IsInvalidated(token string) bool {
+
+	var tokenModel Models.Token
+	if err := Database.DB.First(&tokenModel, "token = ?", token).Error; err != nil {
+		return false
+	}
+	return true
+}

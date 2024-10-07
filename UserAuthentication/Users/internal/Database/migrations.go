@@ -15,6 +15,7 @@ func Automigrations() {
 	DB.AutoMigrate(&Models.Profile{})
 	DB.AutoMigrate(&Models.Role{})
 	DB.AutoMigrate(&Models.Permission{})
+	DB.AutoMigrate(&Models.Token{})
 
 	log.Println("Database migrated")
 
